@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Support Chat</title>
+    <style>
+        #chat-log {
+            border: 1px solid #ccc;
+            padding: 10px;
+            height: 300px;
+            overflow-y: auto;
+            margin-bottom: 10px;
+        }
+        #chat-input-container {
+            display: flex;
+            gap: 10px;
+        }
+        #chat-message-input {
+            flex: 1;
+        }
+        .admin-message {
+            color: blue;
+        }
+        .user-message {
+            color: green;
+        }
+    </style>
+</head>
+<body>
+    <h2>Support Chat</h2>
+
+    <!-- Chat Log -->
+    <div id="chat-log">
+        {% for message in messages %}
+            <div class="{% if message.is_admin %}admin-message{% else %}user-message{% endif %}">
+                <strong>{% if message.is_admin %}Admin{% else %}{{ message.user.username }}{% endif %}</strong>: 
+                {{ message.content }}
+                <span style="font-size: 0.8em; color: gray;">{{ message.timestamp }}</span>
+            </div>
+        {% endfor %}
+    </div>
+
+    <!-- Message Input -->
+    <div id="chat-input-container">
+        <input id="chat-message-input" type="text" placeholder="Enter your message">
+        <button id="chat-message-submit">Send</button>
+    </div>
+
+    <script>
+        const chatLog = document.getElementById('chat-log');
+        const messageInput = document.getElementById('chat-message-input');
+        const submitButton = document.getElementById('chat-message-submit');
+
+        submitButton.onclick = function () {
+            const message = messageInput.value.trim();
+            if (!message) {
+                alert('Message cannot be empty!');
+                return;
+            }
+
+            fetch('/send/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': '{{ csrf_token }}',
+                },
+                body: new URLSearchParams({ 'message': message }),
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        console.error(data.error);
+                    } else {
+                        const newMessage = document.createElement('div');
+                        newMessage.className = data.user === 'Admin' ? 'admin-message' : 'user-message';
+                        newMessage.innerHTML = `<strong>${data.user}</strong>: ${data.content} 
+                            <span style="font-size: 0.8em; color: gray;">${data.timestamp}</span>`;
+                        chatLog.appendChild(newMessage);
+                        chatLog.scrollTop = chatLog.scrollHeight;
+                        messageInput.value = '';
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+        };
+    </script>
+</body>
+</html>
